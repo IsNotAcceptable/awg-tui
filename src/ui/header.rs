@@ -4,7 +4,7 @@ use ratatui::widgets::{Block, Paragraph};
 use ratatui::Frame;
 
 use super::theme;
-use crate::app::App;
+use crate::app::{App, TraceState};
 use crate::kmod;
 
 pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
@@ -12,22 +12,31 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled(format!("module {}: loaded", kmod::MODULE), theme::up())
     } else {
         Span::styled(
-            format!("module {}: NOT detected (userspace?)", kmod::MODULE),
+            format!("module {}: not detected (userspace?)", kmod::MODULE),
             theme::warn(),
         )
     };
-    let priv_ = if app.awg.is_root() {
+    let privilege = if app.awg.is_root() {
         Span::styled("root", theme::up())
     } else {
         Span::styled("via sudo -n", theme::warn())
+    };
+    let exit = match &app.trace {
+        TraceState::Idle => Span::styled("exit: press t to check", theme::label()),
+        TraceState::Loading => Span::styled("exit: checking…", theme::warn()),
+        TraceState::Failed(e) => Span::styled(format!("exit: {e}"), theme::error()),
+        TraceState::Done(t) => {
+            let style = if t.warp_active() { theme::up() } else { theme::warn() };
+            Span::styled(format!("exit: {} {} warp={}", t.ip, t.loc, t.warp), style)
+        }
     };
 
     let line = Line::from(vec![
         module,
         Span::raw("  │  "),
-        priv_,
+        privilege,
         Span::raw("  │  "),
-        Span::styled(app.opts.config_dir.display().to_string(), theme::label()),
+        exit,
     ]);
 
     let block = Block::bordered().title(Span::styled(" awg-tui ", theme::accent()));

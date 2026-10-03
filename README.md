@@ -8,13 +8,17 @@ running as a **kernel module**. It talks to the module through `awg` / `awg-quic
 | Key | Action |
 |---|---|
 | `↑↓` / `j k` | select tunnel |
-| `Enter` / `Space` | bring tunnel up / down |
-| `Tab` | switch Status / Config (keys are masked) |
+| `Enter` / `Space` | bring tunnel up / down (others are stopped unless `--multi`) |
+| `s` | scan WARP endpoints on the running tunnel (`Enter` applies + saves, `x` stops) |
+| `t` | exit check via Cloudflare trace (IP, country, `warp=on`) |
+| `e` | edit config in `$EDITOR` (`sudoedit` when not root) |
+| `i` / `d` | import a `.conf` / delete the selected one |
+| `Tab` | Status → Config (keys masked) → Kernel log |
 | `m` | `modprobe amneziawg` |
 | `r` | refresh |
 | `q` / `Esc` | quit |
 
-Run as root, or with passwordless `sudo -n` for `awg`, `awg-quick`, `modprobe`, `cat`.
+Run it as `sudo awg-tui`, or as a user with passwordless `sudo -n` for the tools.
 
 ## NixOS
 
@@ -37,7 +41,7 @@ Run as root, or with passwordless `sudo -n` for `awg`, `awg-quick`, `modprobe`, 
 
 Options: `programs.awg-tui.{enable,package,toolsPackage,configDir,kernelModule.enable,kernelModule.package}`.
 
-Try without installing: `sudo nix run github:<you>/awg-tui`.
+Try without installing: `sudo nix run github:isnotacceptable/awg-tui`.
 
 ## Layout
 
@@ -50,6 +54,8 @@ src/kmod.rs        kernel module status / modprobe
 src/config.rs      *.conf scanning, secret masking
 src/fmt.rs         formatting helpers
 src/awg/           awg / awg-quick wrapper, `dump` parser, models
+src/jobs/          background jobs: endpoint scan, exit check
+src/editor.rs      suspend TUI and run $EDITOR
 src/ui/            ratatui widgets (header, tunnels, details, footer, theme)
 nix/               package.nix, module.nix
 ```

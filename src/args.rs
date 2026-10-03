@@ -7,6 +7,8 @@ pub const DEFAULT_CONFIG_DIR: &str = "/etc/amnezia/amneziawg";
 #[derive(Debug, Clone)]
 pub struct Options {
     pub config_dir: PathBuf,
+    /// Allow several tunnels up at once (default: bringing one up drops the others).
+    pub multi: bool,
 }
 
 const HELP: &str = "\
@@ -18,6 +20,7 @@ USAGE:
 OPTIONS:
     -c, --config-dir <DIR>   Directory with *.conf tunnels
                              (env: AWG_TUI_CONFIG_DIR, default: /etc/amnezia/amneziawg)
+    -m, --multi              Do not bring other tunnels down when starting one
     -h, --help               Print help
     -V, --version            Print version
 
@@ -32,6 +35,7 @@ pub fn parse() -> Result<Option<Options>> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_CONFIG_DIR));
 
+    let mut multi = false;
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -43,6 +47,7 @@ pub fn parse() -> Result<Option<Options>> {
                 println!("awg-tui {}", env!("CARGO_PKG_VERSION"));
                 return Ok(None);
             }
+            "-m" | "--multi" => multi = true,
             "-c" | "--config-dir" => match it.next() {
                 Some(v) => config_dir = PathBuf::from(v),
                 None => bail!("{arg} requires a value"),
@@ -50,5 +55,5 @@ pub fn parse() -> Result<Option<Options>> {
             other => bail!("unknown argument: {other}\n\n{HELP}"),
         }
     }
-    Ok(Some(Options { config_dir }))
+    Ok(Some(Options { config_dir, multi }))
 }

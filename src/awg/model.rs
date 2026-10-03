@@ -15,6 +15,8 @@ pub struct InterfaceInfo {
     pub name: String,
     pub public_key: String,
     pub listen_port: Option<u16>,
+    /// AmneziaWG obfuscation parameters (Jc, Jmin, S1, H1, I1 …) from `awg showconf`.
+    pub params: Vec<(String, String)>,
     pub peers: Vec<PeerInfo>,
 }
 

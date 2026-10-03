@@ -1,6 +1,8 @@
 mod details;
 mod footer;
 mod header;
+mod popup;
+mod scan;
 mod theme;
 mod tunnels;
 
@@ -24,4 +26,5 @@ pub fn draw(frame: &mut Frame, app: &App) {
     tunnels::draw(frame, left, app);
     details::draw(frame, right, app);
     footer::draw(frame, foot, app);
+    popup::draw(frame, app);
 }

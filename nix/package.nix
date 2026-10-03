@@ -1,4 +1,4 @@
-{ lib, rustPlatform }:
+{ lib, rustPlatform, makeWrapper, curl, iputils }:
 
 let
   manifest = (lib.importTOML ../Cargo.toml).package;
@@ -15,6 +15,14 @@ rustPlatform.buildRustPackage {
   };
 
   cargoLock.lockFile = ../Cargo.lock;
+
+  nativeBuildInputs = [ makeWrapper ];
+
+  # curl (exit-IP check) and ping (endpoint scan). Appended to PATH so that the
+  # setcap `ping` from /run/wrappers/bin keeps priority on NixOS.
+  postInstall = ''
+    wrapProgram $out/bin/awg-tui --suffix PATH : ${lib.makeBinPath [ curl iputils ]}
+  '';
 
   meta = {
     description = "Terminal UI for AmneziaWG (kernel module)";

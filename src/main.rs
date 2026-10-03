@@ -2,8 +2,10 @@ mod app;
 mod args;
 mod awg;
 mod config;
+mod editor;
 mod event;
 mod fmt;
+mod jobs;
 mod kmod;
 mod ui;
 
@@ -15,6 +17,7 @@ use ratatui::DefaultTerminal;
 use crate::app::App;
 
 const TICK: Duration = Duration::from_secs(1);
+const POLL: Duration = Duration::from_millis(150);
 
 fn main() -> Result<()> {
     let Some(opts) = args::parse()? else {
@@ -36,9 +39,15 @@ fn run(terminal: &mut DefaultTerminal, app: &mut App) -> Result<()> {
     while !app.should_quit {
         terminal.draw(|frame| ui::draw(frame, app))?;
 
-        let timeout = TICK.saturating_sub(last_tick.elapsed());
-        if event::poll(timeout)? {
+        if event::poll(POLL)? {
             event::handle(app)?;
+        }
+        app.drain_jobs();
+
+        if let Some(path) = app.pending_edit.take() {
+            editor::edit(app, &path);
+            *terminal = ratatui::init();
+            app.refresh();
         }
         if last_tick.elapsed() >= TICK {
             app.refresh();
