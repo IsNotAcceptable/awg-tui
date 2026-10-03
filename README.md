@@ -21,7 +21,7 @@ Run as root, or with passwordless `sudo -n` for `awg`, `awg-quick`, `modprobe`, 
 ```nix
 # flake.nix
 {
-  inputs.awg-tui.url = "github:<you>/awg-tui";
+  inputs.awg-tui.url = "github:isnotacceptable/awg-tui";
   inputs.awg-tui.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = { nixpkgs, awg-tui, ... }: {
