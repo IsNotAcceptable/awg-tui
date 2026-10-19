@@ -47,6 +47,7 @@ fn run(terminal: &mut DefaultTerminal, app: &mut App) -> Result<()> {
         if let Some(path) = app.pending_edit.take() {
             editor::edit(app, &path);
             *terminal = ratatui::init();
+            app.invalidate_config();
             app.refresh();
         }
         if last_tick.elapsed() >= TICK {

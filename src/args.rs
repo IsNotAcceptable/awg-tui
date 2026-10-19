@@ -9,6 +9,8 @@ pub struct Options {
     pub config_dir: PathBuf,
     /// Allow several tunnels up at once (default: bringing one up drops the others).
     pub multi: bool,
+    /// Rescan, apply the best endpint auto when tunnel goes stale.
+    pub auto_rescan: bool,
 }
 
 const HELP: &str = "\
@@ -21,6 +23,7 @@ OPTIONS:
     -c, --config-dir <DIR>   Directory with *.conf tunnels
                              (env: AWG_TUI_CONFIG_DIR, default: /etc/amnezia/amneziawg)
     -m, --multi              Do not bring other tunnels down when starting one
+    -a  --auto-rescan        Rescan WARP endpoint automatically when a handshake goes stale
     -h, --help               Print help
     -V, --version            Print version
 
@@ -36,6 +39,7 @@ pub fn parse() -> Result<Option<Options>> {
         .unwrap_or_else(|| PathBuf::from(DEFAULT_CONFIG_DIR));
 
     let mut multi = false;
+    let mut auto_rescan = false;
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -48,6 +52,7 @@ pub fn parse() -> Result<Option<Options>> {
                 return Ok(None);
             }
             "-m" | "--multi" => multi = true,
+            "-a" | "--auto-rescan" => auto_rescan = true,
             "-c" | "--config-dir" => match it.next() {
                 Some(v) => config_dir = PathBuf::from(v),
                 None => bail!("{arg} requires a value"),
@@ -55,5 +60,5 @@ pub fn parse() -> Result<Option<Options>> {
             other => bail!("unknown argument: {other}\n\n{HELP}"),
         }
     }
-    Ok(Some(Options { config_dir, multi }))
+    Ok(Some(Options { config_dir, multi, auto_rescan }))
 }

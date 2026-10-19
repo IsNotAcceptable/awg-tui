@@ -10,6 +10,15 @@ pub struct PeerInfo {
     pub keepalive: Option<u16>,
 }
 
+/// Handshake older than this means the perr is probably unreachable
+/// AWG rekeys about every 2 min while traffic flows.
+pub const STALE_SECS: u64 = 180;
+impl PeerInfo {
+    pub fn is_stale(&self, now: u64) -> bool {
+        self.latest_handshake.map_or(true, |t| now.saturating_sub(t) > STALE_SECS)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct InterfaceInfo {
     pub name: String,

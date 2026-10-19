@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::time::Duration;
 use std::thread;
 
 use anyhow::{anyhow, Result};
@@ -14,6 +15,7 @@ use crate::{config, kmod};
 
 const SCAN_COUNT: usize = 24;
 const HISTORY: usize = 90;
+const AUTO_COOLDOWN: Duration = Duration::from_secs(600);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum View {
@@ -69,6 +71,7 @@ pub struct ScanState {
     pub selected: usize,
     pub iface: String,
     pub peer: String,
+    pub auto: bool,
     cancel: Arc<AtomicBool>,
 }
 
@@ -103,6 +106,7 @@ pub struct App {
     pub kmod_loaded: bool,
     pub status: Option<Status>,
     pub config_text: String,
+    config_for: Option<PathBuf>,
     pub log_text: String,
     pub trace: TraceState,
     pub scan: Option<ScanState>,
@@ -112,6 +116,7 @@ pub struct App {
     /// iface -> (rx B/s, tx B/s)
     pub rates: HashMap<String, (f64, f64)>,
     pub history: HashMap<String, Speed>,
+    last_auto: Option<std::time::Instant>,
     prev: HashMap<String, (std::time::Instant, u64, u64)>,
     tx: Sender<Msg>,
     rx: Receiver<Msg>,
@@ -130,6 +135,7 @@ impl App {
             kmod_loaded: false,
             status: None,
             config_text: String::new(),
+            config_for: None,
             log_text: String::new(),
             trace: TraceState::Idle,
             scan: None,
@@ -137,6 +143,7 @@ impl App {
             pending_edit: None,
             rates: HashMap::new(),
             history: HashMap::new(),
+            last_auto: None,
             prev: HashMap::new(),
             tx,
             rx,
@@ -207,11 +214,55 @@ impl App {
             .and_then(|n| self.tunnels.iter().position(|t| t.name == n))
             .unwrap_or(0)
             .min(self.tunnels.len().saturating_sub(1));
+        self.sync_config();
+        self.check_watchdog();
+    }
+
+    /// Warns about tunnels whose peers stoped handshaking
+    fn check_watchdog(&mut self) {
+        if self.scan.as_ref().is_some_and(|s| !s.done) {
+            return;
+        }
+        let now = crate::fmt::now_secs();
+        let stale = self.tunnels.iter().position(|t| {
+            t.live.as_ref().is_some_and(|i| {
+                i.peers
+                    .iter()
+                    // without keepalive, a quiet peer legitimately has no fresh handshake
+                    .any(|p| p.keepalive.is_some() && p.is_stale(now))
+            })
+        });
+        let Some(idx) = stale else { return };
+        let name = self.tunnels[idx].name.clone();
+        if !self.opts.auto_rescan {
+            self.set_error(format!("{name}: no recent handshake - press s to rescan endpoints"));
+            return;
+        }
+        if self.last_auto.is_some_and(|t| t.elapsed() < AUTO_COOLDOWN) {
+            return;
+        }
+        self.last_auto = Some(std::time::Instant::now());
+        self.selected = idx;
+        self.set_error(format!("{name}: no recent handshake — rescanning endpoints"));
+        self.begin_scan(true);
+    }
+
+    pub fn invalidate_config(&mut self) {
+        self.config_for = None;
+    }
+
+    fn sync_config(&mut self) {
+        let path = self.selected_tunnel().and_then(|t| t.path.clone());
+        if path == self.config_for {
+            return;
+        }
+        self.config_for = path;
         self.load_config_text();
     }
 
     /// `r`: refresh plus reload the kernel log.
     pub fn manual_refresh(&mut self) {
+        self.invalidate_config();
         self.refresh();
         if self.view == View::Log {
             self.load_log();
@@ -258,14 +309,14 @@ impl App {
     pub fn next(&mut self) {
         if !self.tunnels.is_empty() {
             self.selected = (self.selected + 1) % self.tunnels.len();
-            self.load_config_text();
+            self.sync_config();
         }
     }
 
     pub fn prev(&mut self) {
         if !self.tunnels.is_empty() {
             self.selected = (self.selected + self.tunnels.len() - 1) % self.tunnels.len();
-            self.load_config_text();
+            self.sync_config();
         }
     }
 
@@ -360,6 +411,7 @@ impl App {
             Ok(()) => self.set_info(format!("imported {stem}")),
             Err(e) => self.set_error(format!("{e:#}")),
         }
+        self.invalidate_config();
         self.refresh();
     }
 
@@ -384,6 +436,7 @@ impl App {
                 Err(e) => self.set_error(format!("{e:#}")),
             }
         }
+        self.invalidate_config();
         self.refresh();
     }
 
@@ -401,7 +454,11 @@ impl App {
                     if let Some(s) = &mut self.scan {
                         s.done = true;
                     }
-                    self.set_info("scan finished — Enter applies the selected endpoint");
+                    if self.scan.as_ref().is_some_and(|s| s.auto) {
+                        self.apply_best_if_reachable();
+                    } else {
+                        self.set_info("scan finished — Enter applies the selected endpoint");
+                    }
                 }
                 Msg::Trace(r) => {
                     self.trace = match r {
@@ -426,6 +483,10 @@ impl App {
     }
 
     pub fn start_scan(&mut self) {
+        self.begin_scan(false);
+    }
+
+    fn begin_scan(&mut self, auto: bool) {
         if self.scan.as_ref().is_some_and(|s| !s.done) {
             self.view = View::Scan;
             return;
@@ -448,10 +509,13 @@ impl App {
             selected: 0,
             iface: info.name.clone(),
             peer: peer_key.clone(),
+            auto,
             cancel: cancel.clone(),
         });
         self.view = View::Scan;
-        self.set_info("scanning… (x to stop)");
+        if !auto {
+            self.set_info("scanning... (x to stop)");
+        }
 
         let (awg, tx, iface) = (self.awg.clone(), self.tx.clone(), info.name);
         thread::spawn(move || jobs::scan::run(awg, iface, peer_key, original, list, cancel, tx));
@@ -510,7 +574,21 @@ impl App {
             Some(Err(e)) => self.set_error(format!("applied {endpoint}, but saving failed: {e:#}")),
             None => self.set_info(format!("endpoint {endpoint} applied (no config file to save)")),
         }
+        self.invalidate_config();
         self.refresh();
+    }
+
+    /// Auto mode: apply the top-ranked endpoint if anything answered.
+    fn apply_best_if_reachable(&mut self) {
+        let reachable = self.scan.as_mut().is_some_and(|s| {
+            s.selected = 0;
+            s.sorted().first().is_some_and(|p| p.loss < 100)
+        });
+        if reachable {
+            self.apply_scan_choice();
+        } else {
+            self.set_error("auto rescan: no reachable endpoint found");
+        }
     }
 }
 
