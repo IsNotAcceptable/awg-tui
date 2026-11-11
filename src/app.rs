@@ -567,6 +567,9 @@ impl App {
             let text = self.awg.read_file(&p)?;
             let new = config::replace_endpoint(&text, &endpoint)
                 .ok_or_else(|| anyhow!("no Endpoint line in {}", p.display()))?;
+            let bak = p.with_extension("conf.bak");
+            self.awg.write_file(&bak, &text)?;
+            self.awg.chmod600(&bak)?;
             self.awg.write_file(&p, &new)
         });
         match saved {

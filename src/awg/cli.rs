@@ -102,6 +102,10 @@ impl Awg {
         self.run("rm", &["-f", &path.to_string_lossy()]).map(drop)
     }
 
+    pub fn chmod600(&self, path: &Path) -> Result<()> {
+        self.run("chmod", &["600", &path.to_string_lossy()]).map(drop)
+    }
+
     /// Recent kernel log lines mentioning amneziawg.
     pub fn kernel_log(&self) -> Result<String> {
         self.run(
