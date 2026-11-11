@@ -24,6 +24,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
                 Line::from(Span::styled("y yes · any other key cancel", theme::label())),
             ],
         ),
+        Mode::ConfirmRollback(name) => (
+            " Rollback ",
+            vec![
+                Line::from(format!("Restore '{name}' from its .conf.bak backup?")),
+                Line::from(Span::styled("y yes · any other key cancel", theme::label())),
+            ],
+        ),
     };
 
     let area = centered(frame.area(), 70, lines.len() as u16 + 2);

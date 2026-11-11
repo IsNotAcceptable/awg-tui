@@ -31,6 +31,8 @@ pub enum Mode {
     Import(String),
     /// Waiting for y/n to delete the named tunnel.
     ConfirmDelete(String),
+    /// Waiting for y/n to restore the named tunnel from its .conf.bak.
+    ConfirmRollback(String),
 }
 
 pub enum TraceState {
@@ -592,6 +594,46 @@ impl App {
         } else {
             self.set_error("auto rescan: no reachable endpoint found");
         }
+    }
+
+    pub fn ask_rollback(&mut self) {
+        match self.selected_tunnel() {
+            Some(t) if t.path.is_none() => self.set_error("no config file to roll back"),
+            Some(t) => self.mode = Mode::ConfirmRollback(t.name.clone()),
+            None => {}
+        }
+    }
+
+    pub fn rollback_confirmed(&mut self, name: &str) {
+        let Some(path) = self
+            .tunnels
+            .iter()
+            .find(|t| t.name == name)
+            .and_then(|t| t.path.clone())
+        else {
+            return;
+        };
+        let was_up = self.tunnels.iter().any(|t| t.name == name && t.is_up());
+        let bak = path.with_extension("conf.bak");
+
+        match self.restore(&bak, &path, was_up) {
+            Ok(()) if was_up => self.set_info(format!("{name} restored from backup and restarted")),
+            Ok(()) => self.set_info(format!("{name} restored from backup")),
+            Err(e) => self.set_error(format!("rollback failed: {e:#}")),
+        }
+        self.trace = TraceState::Idle;
+        self.invalidate_config();
+        self.refresh();
+    }
+
+    /// Copies the backup over the config; restarts the tunnel if it was up.
+    fn restore(&self, bak: &Path, path: &Path, restart: bool) -> Result<()> {
+        self.awg.install_file(bak, path)?;
+        if restart {
+            self.awg.quick_down(path)?;
+            self.awg.quick_up(path)?;
+        }
+        Ok(())
     }
 }
 

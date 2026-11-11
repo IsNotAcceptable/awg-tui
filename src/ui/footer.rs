@@ -6,7 +6,7 @@ use ratatui::Frame;
 use super::theme;
 use crate::app::{App, Level, View};
 
-const KEYS: &str = "⏎ up/down  s scan  t check  e edit  i import  d delete  Tab view  m module  r refresh  q quit";
+const KEYS: &str = "⏎ up/down  s scan  t check  e edit b rollback i import  d delete  Tab view  m module  r refresh  q quit";
 const SCAN_KEYS: &str = "↑↓ select  ⏎ apply & save  x stop  s rescan  Esc back  q quit";
 
 pub fn draw(frame: &mut Frame, area: Rect, app: &App) {

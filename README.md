@@ -17,6 +17,7 @@ running as a **kernel module**. It talks to the module through `awg` / `awg-quic
 | `m` | `modprobe amneziawg` |
 | `r` | refresh |
 | `q` / `Esc` | quit |
+| `b` | roll back the selected config to its `.conf.bak` (restarts the tunnel if up) |
 
 Run it as `sudo awg-tui`, or as a user with passwordless `sudo -n` for the tools.
 

@@ -25,6 +25,7 @@ pub fn handle(app: &mut App) -> Result<()> {
         Mode::Normal => normal(app, key),
         Mode::Import(_) => import(app, key),
         Mode::ConfirmDelete(_) => confirm_delete(app, key),
+        Mode::ConfirmRollback(_) => confirm_rollback(app, key),
     }
     Ok(())
 }
@@ -46,7 +47,17 @@ fn normal(app: &mut App, key: KeyEvent) {
         KeyCode::Char('e') => app.request_edit(),
         KeyCode::Char('i') => app.start_import(),
         KeyCode::Char('d') => app.ask_delete(),
+        KeyCode::Char('b') => app.ask_rollback(),
         _ => {}
+    }
+}
+
+fn confirm_rollback(app: &mut App, key: KeyEvent) {
+    let Mode::ConfirmRollback(name) = &app.mode else { return };
+    let name = name.clone();
+    app.mode = Mode::Normal;
+    if matches!(key.code, KeyCode::Char('y') | KeyCode::Char('Y')) {
+        app.rollback_confirmed(&name);
     }
 }
 
