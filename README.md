@@ -18,6 +18,7 @@ running as a **kernel module**. It talks to the module through `awg` / `awg-quic
 | `r` | refresh |
 | `q` / `Esc` | quit |
 | `b` | roll back the selected config to its `.conf.bak` (restarts the tunnel if up) |
+| `g` | kill switch: drop all traffic except the selected tunnel and its endpoint (toggle, need nftables) |
 
 Run it as `sudo awg-tui`, or as a user with passwordless `sudo -n` for the tools.
 

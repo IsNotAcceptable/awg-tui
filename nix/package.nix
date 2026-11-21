@@ -1,4 +1,4 @@
-{ lib, rustPlatform, makeWrapper, curl, iputils }:
+{ lib, rustPlatform, makeWrapper, curl, iputils, nftables }:
 
 let
   manifest = (lib.importTOML ../Cargo.toml).package;
@@ -21,7 +21,7 @@ rustPlatform.buildRustPackage {
   # curl (exit-IP check) and ping (endpoint scan). Appended to PATH so that the
   # setcap `ping` from /run/wrappers/bin keeps priority on NixOS.
   postInstall = ''
-    wrapProgram $out/bin/awg-tui --suffix PATH : ${lib.makeBinPath [ curl iputils ]}
+    wrapProgram $out/bin/awg-tui --suffix PATH : ${lib.makeBinPath [ curl iputils nftables ]}
   '';
 
   meta = {

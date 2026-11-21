@@ -11,7 +11,7 @@ use anyhow::{anyhow, Result};
 use crate::args::Options;
 use crate::awg::{Awg, InterfaceInfo};
 use crate::jobs::{self, trace::Trace, Msg, Probe};
-use crate::{config, kmod};
+use crate::{config, killswitch, kmod};
 
 const SCAN_COUNT: usize = 24;
 const HISTORY: usize = 90;
@@ -112,6 +112,8 @@ pub struct App {
     pub log_text: String,
     pub trace: TraceState,
     pub scan: Option<ScanState>,
+    /// Interface whose killswitch is cur active
+    pub killswitch: Option<String>,
     pub should_quit: bool,
     /// Set by the key handler; the main loop suspends the TUI and opens the editor.
     pub pending_edit: Option<PathBuf>,
@@ -141,6 +143,7 @@ impl App {
             log_text: String::new(),
             trace: TraceState::Idle,
             scan: None,
+            killswitch: None,
             should_quit: false,
             pending_edit: None,
             rates: HashMap::new(),
@@ -162,6 +165,41 @@ impl App {
 
     pub fn set_error(&mut self, text: impl Into<String>) {
         self.status = Some(Status { text: text.into(), level: Level::Error });
+    }
+
+    // ----------------------------------------------------------------
+    /// 'g': only selected tunnel and its endpoint may send traffic
+    pub fn toggle_killswitch(&mut self) {
+        let Some(live) = self.selected_tunnel().and_then(|t| t.live.clone()) else {
+            return self.set_error("bring the tunnel up first");    
+        };
+
+        let was_on = self.killswitch.is_some();
+        if let Err(e) = self.release_killswitch() {
+            return self.set_error(format!("{e:#}"));
+        }
+        if was_on {
+            return self.set_info("kill switch off");
+        }
+        let Some(ep) = live.peers.iter().find_map(|p| p.endpoint.clone()) else {
+            return self.set_error("no peer endpoint to allow");
+        };
+        match killswitch::enable(&self.awg, &live.name, &ep) {
+            Ok(()) => {
+                self.set_info(format!("kill switch on: only {} may send traffic", live.name));
+                self.killswitch = Some(live.name);
+            }
+            Err(e) => self.set_error(format!("{e:#}")),
+        }
+    }
+
+    /// Remove the killswitch rule if one is active
+    pub fn release_killswitch(&mut self) -> Result<()> {
+        if self.killswitch.is_some() {
+            killswitch::disable(&self.awg)?;
+            self.killswitch = None;
+        }
+        Ok(())
     }
 
     // ---------------------------------------------------------------- refresh
@@ -338,6 +376,11 @@ impl App {
 
     /// Brings the selected tunnel up or down via `awg-quick`.
     pub fn toggle(&mut self) {
+        // killswitch would block the handshake of tunnel changing
+        if let Err(e) = self.release_killswitch() {
+            return self.set_error(format!("{e:#}"));
+        }
+
         let Some(t) = self.selected_tunnel() else { return };
         let (name, live, path) = (t.name.clone(), t.is_up(), t.path.clone());
 
@@ -493,6 +536,11 @@ impl App {
             self.view = View::Scan;
             return;
         }
+
+        if self.killswitch.is_some() {
+            return self.set_error("killswitch blocks scanning - press g to turn it off first");
+        }
+            
         let info = self.selected_tunnel().and_then(|t| t.live.clone());
         let Some(info) = info else {
             return self.set_error("bring the tunnel up first (Enter)");
@@ -579,6 +627,12 @@ impl App {
             Some(Err(e)) => self.set_error(format!("applied {endpoint}, but saving failed: {e:#}")),
             None => self.set_info(format!("endpoint {endpoint} applied (no config file to save)")),
         }
+        if self.killswitch.as_deref() == Some(iface.as_str()) {
+            if let Err(e) = killswitch::enable(&self.awg, &iface, &endpoint) {
+                self.set_error(format!("killswitch not updated: {e:#}"));
+            }
+        }
+
         self.invalidate_config();
         self.refresh();
     }
@@ -613,6 +667,11 @@ impl App {
         else {
             return;
         };
+
+        if let Err(e) = self.release_killswitch() {
+            return self.set_error(format!("{e:#}"));
+        }
+
         let was_up = self.tunnels.iter().any(|t| t.name == name && t.is_up());
         let bak = path.with_extension("conf.bak");
 

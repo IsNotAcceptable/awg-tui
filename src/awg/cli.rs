@@ -102,6 +102,12 @@ impl Awg {
         self.run("rm", &["-f", &path.to_string_lossy()]).map(drop)
     }
 
+    pub fn nft_apply(&self, script: &str) -> Result<()> {
+        self.exec("nft", &["-f", "-"], Some(script), true)
+            .and_then(check)
+            .map(drop)
+    }
+
     pub fn chmod600(&self, path: &Path) -> Result<()> {
         self.run("chmod", &["600", &path.to_string_lossy()]).map(drop)
     }

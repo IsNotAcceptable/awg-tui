@@ -48,6 +48,7 @@ fn normal(app: &mut App, key: KeyEvent) {
         KeyCode::Char('i') => app.start_import(),
         KeyCode::Char('d') => app.ask_delete(),
         KeyCode::Char('b') => app.ask_rollback(),
+        KeyCode::Char('g') => app.toggle_killswitch(),
         _ => {}
     }
 }

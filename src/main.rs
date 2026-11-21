@@ -8,6 +8,7 @@ mod fmt;
 mod jobs;
 mod kmod;
 mod ui;
+mod killswitch;
 
 use std::time::{Duration, Instant};
 
@@ -30,6 +31,12 @@ fn main() -> Result<()> {
     let mut terminal = ratatui::init();
     let result = run(&mut terminal, &mut app);
     ratatui::restore();
+    if let Err(e) = app.release_killswitch() {
+        eprintln!(
+            "awg-tui: couldnot remove kill switch: {e:#}\n\
+             remove it manually: sudo nft delete table inet awg_tui_ks"
+        );
+    }
     result
 }
 
