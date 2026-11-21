@@ -26,7 +26,7 @@ rustPlatform.buildRustPackage {
 
   meta = {
     description = "Terminal UI for AmneziaWG (kernel module)";
-    license = lib.licenses.mit;
+    license = lib.licenses.gpl3Plus;
     platforms = lib.platforms.linux;
     mainProgram = "awg-tui";
   };
