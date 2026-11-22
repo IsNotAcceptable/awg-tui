@@ -26,6 +26,7 @@ pub fn handle(app: &mut App) -> Result<()> {
         Mode::Import(_) => import(app, key),
         Mode::ConfirmDelete(_) => confirm_delete(app, key),
         Mode::ConfirmRollback(_) => confirm_rollback(app, key),
+        Mode::ConfirmInstall => confirm_install(app, key),
     }
     Ok(())
 }
@@ -98,5 +99,12 @@ fn confirm_delete(app: &mut App, key: KeyEvent) {
     app.mode = Mode::Normal;
     if matches!(key.code, KeyCode::Char('y') | KeyCode::Char('Y')) {
         app.delete_confirmed(&name);
+    }
+}
+
+fn confirm_install(app: &mut App, key: KeyEvent) {
+    app.mode = Mode::Normal;
+    if matches!(key.code, KeyCode::Char('y') | KeyCode::Char('Y')) {
+        app.install_confirmed();
     }
 }

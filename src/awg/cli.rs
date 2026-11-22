@@ -131,6 +131,10 @@ impl Awg {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
+    pub fn sudo_run(&self, bin: &str, args: &[&str]) -> Result<String> {
+        self.run(bin, args)
+    }
+
     fn exec(&self, bin: &str, args: &[&str], stdin: Option<&str>, escalate: bool) -> Result<Output> {
         let mut cmd = if escalate && self.sudo {
             let mut c = Command::new("sudo");
