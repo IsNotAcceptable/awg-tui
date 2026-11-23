@@ -1,16 +1,18 @@
 //! Kill Switch: nftables table that drops all output except loopback
 //! tunnel and handshake packets to the peer endpoint
 
-use std::net::Ipv4Addr;
-use anyhow::{anyhow, bail, Result};
 use crate::awg::Awg;
 use crate::config::valid_iface_name;
+use anyhow::{anyhow, bail, Result};
+use std::net::Ipv4Addr;
 
 pub const TABLE: &str = "awg_tui_ks";
 
 /// split ip:port (only ipv4 endpoints)
 fn split_endpoint(ep: &str) -> Result<(Ipv4Addr, u16)> {
-    let (ip, port) = ep.rsplit_once(':').ok_or_else(|| anyhow!("bad endpoint {ep}"))?;
+    let (ip, port) = ep
+        .rsplit_once(':')
+        .ok_or_else(|| anyhow!("bad endpoint {ep}"))?;
     let ip: Ipv4Addr = ip
         .parse()
         .map_err(|_| anyhow!("kill switch supports IPv4 endpoints only: {ep}"))?;
@@ -44,7 +46,9 @@ pub fn enable(awg: &Awg, iface: &str, endpoint: &str) -> Result<()> {
 }
 
 pub fn disable(awg: &Awg) -> Result<()> {
-    awg.nft_apply(&format!("add table inet {TABLE}\ndelete table inet {TABLE}\n"))
+    awg.nft_apply(&format!(
+        "add table inet {TABLE}\ndelete table inet {TABLE}\n"
+    ))
 }
 
 #[cfg(test)]

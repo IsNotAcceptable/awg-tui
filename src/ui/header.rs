@@ -26,7 +26,11 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
         TraceState::Loading => Span::styled("exit: checking…", theme::warn()),
         TraceState::Failed(e) => Span::styled(format!("exit: {e}"), theme::error()),
         TraceState::Done(t) => {
-            let style = if t.warp_active() { theme::up() } else { theme::warn() };
+            let style = if t.warp_active() {
+                theme::up()
+            } else {
+                theme::warn()
+            };
             Span::styled(format!("exit: {} {} warp={}", t.ip, t.loc, t.warp), style)
         }
     };

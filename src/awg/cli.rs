@@ -73,7 +73,9 @@ impl Awg {
     /// Mod time of a file as unix sec
     pub fn file_mtime(&self, path: &Path) -> Result<u64> {
         let out = self.run("stat", &["-c", "%Y", &path.to_string_lossy()])?;
-        out.trim().parse().map_err(|_| anyhow::anyhow!("bad mtime for {}", path.display()))
+        out.trim()
+            .parse()
+            .map_err(|_| anyhow::anyhow!("bad mtime for {}", path.display()))
     }
 
     /// Reads a (usually root-only) file.
@@ -99,7 +101,13 @@ impl Awg {
     pub fn install_file(&self, src: &Path, dest: &Path) -> Result<()> {
         self.run(
             "install",
-            &["-D", "-m", "600", &src.to_string_lossy(), &dest.to_string_lossy()],
+            &[
+                "-D",
+                "-m",
+                "600",
+                &src.to_string_lossy(),
+                &dest.to_string_lossy(),
+            ],
         )
         .map(drop)
     }
@@ -115,14 +123,24 @@ impl Awg {
     }
 
     pub fn chmod600(&self, path: &Path) -> Result<()> {
-        self.run("chmod", &["600", &path.to_string_lossy()]).map(drop)
+        self.run("chmod", &["600", &path.to_string_lossy()])
+            .map(drop)
     }
 
     /// Recent kernel log lines mentioning amneziawg.
     pub fn kernel_log(&self) -> Result<String> {
         self.run(
             "journalctl",
-            &["-k", "-g", "amnezia", "-n", "100", "--no-pager", "-o", "short"],
+            &[
+                "-k",
+                "-g",
+                "amnezia",
+                "-n",
+                "100",
+                "--no-pager",
+                "-o",
+                "short",
+            ],
         )
     }
 
@@ -141,7 +159,13 @@ impl Awg {
         self.run(bin, args)
     }
 
-    fn exec(&self, bin: &str, args: &[&str], stdin: Option<&str>, escalate: bool) -> Result<Output> {
+    fn exec(
+        &self,
+        bin: &str,
+        args: &[&str],
+        stdin: Option<&str>,
+        escalate: bool,
+    ) -> Result<Output> {
         let mut cmd = if escalate && self.sudo {
             let mut c = Command::new("sudo");
             c.args(["-n", bin]);
@@ -152,7 +176,11 @@ impl Awg {
         cmd.args(args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .stdin(if stdin.is_some() { Stdio::piped() } else { Stdio::null() });
+            .stdin(if stdin.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            });
 
         let mut child = cmd
             .spawn()

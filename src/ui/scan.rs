@@ -42,7 +42,11 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
 
     let table = Table::new(
         rows,
-        [Constraint::Length(24), Constraint::Length(6), Constraint::Min(8)],
+        [
+            Constraint::Length(24),
+            Constraint::Length(6),
+            Constraint::Min(8),
+        ],
     )
     .header(Row::new(["Endpoint", "Loss", "RTT"]).style(theme::accent()))
     .block(Block::bordered().title(title))

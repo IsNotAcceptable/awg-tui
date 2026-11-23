@@ -15,7 +15,8 @@ pub struct PeerInfo {
 pub const STALE_SECS: u64 = 180;
 impl PeerInfo {
     pub fn is_stale(&self, now: u64) -> bool {
-        self.latest_handshake.map_or(true, |t| now.saturating_sub(t) > STALE_SECS)
+        self.latest_handshake
+            .is_none_or(|t| now.saturating_sub(t) > STALE_SECS)
     }
 }
 

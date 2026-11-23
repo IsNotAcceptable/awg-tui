@@ -1,9 +1,9 @@
 //! First run installer for the AWG kernel module and tools
 //! Detects distro and runs matching steps
 
-use std::fs;
-use anyhow::Result;
 use crate::awg::Awg;
+use anyhow::Result;
+use std::fs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Distro {
@@ -19,9 +19,14 @@ pub fn detect() -> Distro {
     let id: Vec<String> = text
         .lines()
         .filter_map(|l| l.strip_prefix("ID=").or_else(|| l.strip_prefix("ID_LIKE=")))
-        .flat_map(|v| v.trim_matches('"').split_whitespace().map(str::to_string).collect::<Vec<_>>())
+        .flat_map(|v| {
+            v.trim_matches('"')
+                .split_whitespace()
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
         .collect();
-    let has = |s: &str| id.iter().any(|i| i==s);
+    let has = |s: &str| id.iter().any(|i| i == s);
     if has("arch") {
         Distro::Arch
     } else if has("debian") || has("ubuntu") {
@@ -45,18 +50,33 @@ pub struct Step {
 /// For distro, `none` -> manually install
 pub fn plan(distro: Distro) -> Option<Vec<Step>> {
     match distro {
-
         Distro::Debian => Some(vec![Step {
             desc: "install build depends",
             bin: "apt-get",
             // TODO: verify exact package list against upstream README
-            args: &["install", "-y", "git", "make", "gcc", "dkms", "linux-headers-generic"],
+            args: &[
+                "install",
+                "-y",
+                "git",
+                "make",
+                "gcc",
+                "dkms",
+                "linux-headers-generic",
+            ],
         }]),
 
         Distro::Fedora => Some(vec![Step {
             desc: "install build depends",
             bin: "dnf",
-            args: &["install", "-y", "git", "make", "gcc", "dkms", "kernel-devel"],
+            args: &[
+                "install",
+                "-y",
+                "git",
+                "make",
+                "gcc",
+                "dkms",
+                "kernel-devel",
+            ],
         }]),
 
         Distro::Nixos | Distro::Arch | Distro::Other => None,

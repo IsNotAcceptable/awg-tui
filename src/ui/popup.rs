@@ -13,7 +13,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
             " Import config ",
             vec![
                 Line::from("Path to a .conf file (file name = interface name):"),
-                Line::from(vec![Span::raw(buf.clone()), Span::styled("█", theme::accent())]),
+                Line::from(vec![
+                    Span::raw(buf.clone()),
+                    Span::styled("█", theme::accent()),
+                ]),
                 Line::from(Span::styled("Enter import · Esc cancel", theme::label())),
             ],
         ),

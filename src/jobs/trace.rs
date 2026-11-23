@@ -56,7 +56,10 @@ mod tests {
     #[test]
     fn parses_trace() {
         let t = parse("fl=1\nip=1.2.3.4\ncolo=FRA\nloc=DE\nwarp=on\n");
-        assert_eq!((t.ip.as_str(), t.loc.as_str(), t.colo.as_str()), ("1.2.3.4", "DE", "FRA"));
+        assert_eq!(
+            (t.ip.as_str(), t.loc.as_str(), t.colo.as_str()),
+            ("1.2.3.4", "DE", "FRA")
+        );
         assert!(t.warp_active());
     }
 }

@@ -10,7 +10,13 @@ use crate::fmt;
 pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
     match app.view {
         View::Scan => scan::draw(frame, area, app),
-        View::Config => text(frame, area, " Config (secrets masked) ", &app.config_text, false),
+        View::Config => text(
+            frame,
+            area,
+            " Config (secrets masked) ",
+            &app.config_text,
+            false,
+        ),
         View::Log => text(frame, area, " Kernel log ", &app.log_text, true),
         View::Info => info(frame, area, app),
     }
@@ -20,7 +26,11 @@ pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
 fn text(frame: &mut Frame, area: Rect, title: &str, body: &str, tail: bool) {
     let total = body.lines().count() as u16;
     let visible = area.height.saturating_sub(2);
-    let skip = if tail { total.saturating_sub(visible) } else { 0 };
+    let skip = if tail {
+        total.saturating_sub(visible)
+    } else {
+        0
+    };
     let lines: Vec<Line> = body.lines().map(Line::from).collect();
     frame.render_widget(
         Paragraph::new(lines)
@@ -34,7 +44,10 @@ fn text(frame: &mut Frame, area: Rect, title: &str, body: &str, tail: bool) {
 fn info(frame: &mut Frame, area: Rect, app: &App) {
     let block = Block::bordered().title(" Status ");
     let Some(t) = app.selected_tunnel() else {
-        let msg = format!("No tunnels found in {}  (press i to import)", app.opts.config_dir.display());
+        let msg = format!(
+            "No tunnels found in {}  (press i to import)",
+            app.opts.config_dir.display()
+        );
         frame.render_widget(Paragraph::new(msg).block(block), area);
         return;
     };
@@ -48,7 +61,9 @@ fn info(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     frame.render_widget(
-        Paragraph::new(info_lines(app, t)).block(block).wrap(Wrap { trim: false }),
+        Paragraph::new(info_lines(app, t))
+            .block(block)
+            .wrap(Wrap { trim: false }),
         top,
     );
 
@@ -102,9 +117,15 @@ fn info_lines(app: &App, t: &Tunnel) -> Vec<Line<'static>> {
     ];
 
     let (rx, tx) = live.totals();
-    out.push(kv("total", format!("↓ {}  ↑ {}", fmt::bytes(rx), fmt::bytes(tx))));
+    out.push(kv(
+        "total",
+        format!("↓ {}  ↑ {}", fmt::bytes(rx), fmt::bytes(tx)),
+    ));
     if let Some(&(rrx, rtx)) = app.rates.get(&t.name) {
-        out.push(kv("speed", format!("↓ {}  ↑ {}", fmt::rate(rrx), fmt::rate(rtx))));
+        out.push(kv(
+            "speed",
+            format!("↓ {}  ↑ {}", fmt::rate(rrx), fmt::rate(rtx)),
+        ));
     }
 
     if !live.params.is_empty() {
@@ -121,7 +142,10 @@ fn info_lines(app: &App, t: &Tunnel) -> Vec<Line<'static>> {
             format!("Peer #{} {}", i + 1, fmt::short_key(&p.public_key)),
             theme::accent(),
         )));
-        out.push(kv("endpoint", p.endpoint.clone().unwrap_or_else(|| "-".into())));
+        out.push(kv(
+            "endpoint",
+            p.endpoint.clone().unwrap_or_else(|| "-".into()),
+        ));
         out.push(kv("allowed ips", p.allowed_ips.clone()));
         out.push(kv(
             "handshake",

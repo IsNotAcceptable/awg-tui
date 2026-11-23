@@ -54,7 +54,9 @@ fn normal(app: &mut App, key: KeyEvent) {
 }
 
 fn confirm_rollback(app: &mut App, key: KeyEvent) {
-    let Mode::ConfirmRollback(name) = &app.mode else { return };
+    let Mode::ConfirmRollback(name) = &app.mode else {
+        return;
+    };
     let name = name.clone();
     app.mode = Mode::Normal;
     if matches!(key.code, KeyCode::Char('y') | KeyCode::Char('Y')) {
@@ -76,7 +78,9 @@ fn scan_keys(app: &mut App, key: KeyEvent) -> bool {
 }
 
 fn import(app: &mut App, key: KeyEvent) {
-    let Mode::Import(buf) = &mut app.mode else { return };
+    let Mode::Import(buf) = &mut app.mode else {
+        return;
+    };
     match key.code {
         KeyCode::Esc => app.mode = Mode::Normal,
         KeyCode::Backspace => {
@@ -93,7 +97,9 @@ fn import(app: &mut App, key: KeyEvent) {
 }
 
 fn confirm_delete(app: &mut App, key: KeyEvent) {
-    let Mode::ConfirmDelete(name) = &app.mode else { return };
+    let Mode::ConfirmDelete(name) = &app.mode else {
+        return;
+    };
     let name = name.clone();
     app.mode = Mode::Normal;
     if matches!(key.code, KeyCode::Char('y') | KeyCode::Char('Y')) {

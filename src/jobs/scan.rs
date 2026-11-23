@@ -26,8 +26,8 @@ const PREFIXES: &[&str] = &[
 const PORTS: &[u16] = &[
     500, 854, 859, 864, 878, 880, 890, 891, 894, 903, 908, 928, 934, 939, 942, 943, 945, 946, 955,
     968, 987, 988, 1002, 1010, 1014, 1018, 1070, 1074, 1180, 1387, 1701, 1843, 2371, 2408, 2506,
-    3138, 3476, 3581, 3854, 4177, 4198, 4233, 4500, 5279, 5956, 7103, 7152, 7156, 7281, 7559,
-    8319, 8742, 8854, 8886,
+    3138, 3476, 3581, 3854, 4177, 4198, 4233, 4500, 5279, 5956, 7103, 7152, 7156, 7281, 7559, 8319,
+    8742, 8854, 8886,
 ];
 
 const PING_TARGET: &str = "1.1.1.1";
@@ -77,7 +77,11 @@ pub fn run(
         }
         let probe = match awg.set_endpoint(&iface, &peer, &ep) {
             Ok(()) => measure(&awg, &iface, &ep),
-            Err(_) => Probe { endpoint: ep, loss: 100, rtt_ms: None },
+            Err(_) => Probe {
+                endpoint: ep,
+                loss: 100,
+                rtt_ms: None,
+            },
         };
         if tx.send(Msg::Probe(probe)).is_err() {
             return;
@@ -97,9 +101,17 @@ fn measure(awg: &Awg, iface: &str, ep: &str) -> Probe {
     match out {
         Ok(o) => {
             let (loss, rtt_ms) = parse_ping(&String::from_utf8_lossy(&o.stdout));
-            Probe { endpoint: ep.to_string(), loss, rtt_ms }
+            Probe {
+                endpoint: ep.to_string(),
+                loss,
+                rtt_ms,
+            }
         }
-        Err(_) => Probe { endpoint: ep.to_string(), loss: 100, rtt_ms: None },
+        Err(_) => Probe {
+            endpoint: ep.to_string(),
+            loss: 100,
+            rtt_ms: None,
+        },
     }
 }
 
@@ -110,7 +122,9 @@ pub fn parse_ping(out: &str) -> (u32, Option<f64>) {
         .find(|l| l.contains("packet loss"))
         .and_then(|l| {
             let pct = l.split('%').next()?;
-            let num = pct.rsplit(|c: char| !(c.is_ascii_digit() || c == '.')).next()?;
+            let num = pct
+                .rsplit(|c: char| !(c.is_ascii_digit() || c == '.'))
+                .next()?;
             num.parse::<f64>().ok()
         })
         .map_or(100, |v| v.round() as u32);

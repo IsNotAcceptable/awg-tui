@@ -6,10 +6,10 @@ mod editor;
 mod event;
 mod fmt;
 mod jobs;
-mod kmod;
-mod ui;
 mod killswitch;
+mod kmod;
 mod setup;
+mod ui;
 
 use std::time::{Duration, Instant};
 

@@ -10,7 +10,9 @@ use super::model::{InterfaceInfo, PeerInfo};
 pub fn parse_dump(name: &str, dump: &str) -> Result<InterfaceInfo> {
     let mut lines = dump.lines().filter(|l| !l.trim().is_empty());
 
-    let head = lines.next().ok_or_else(|| anyhow!("empty dump for {name}"))?;
+    let head = lines
+        .next()
+        .ok_or_else(|| anyhow!("empty dump for {name}"))?;
     let f: Vec<&str> = head.split('\t').collect();
     if f.len() < 4 {
         bail!("malformed interface line for {name}: {head}");
@@ -37,7 +39,10 @@ pub fn parse_dump(name: &str, dump: &str) -> Result<InterfaceInfo> {
             latest_handshake: f[4].parse::<u64>().ok().filter(|&t| t > 0),
             rx: 0,
             tx: 0,
-            keepalive: f.last().filter(|_| f.len() > 5).and_then(|k| k.parse().ok()),
+            keepalive: f
+                .last()
+                .filter(|_| f.len() > 5)
+                .and_then(|k| k.parse().ok()),
         });
     }
     Ok(info)

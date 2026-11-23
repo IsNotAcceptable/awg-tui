@@ -10,7 +10,11 @@ const KEYS: &str = "⏎ up/down  s scan  t check  e edit  b rollback  g killswit
 const SCAN_KEYS: &str = "↑↓ select  ⏎ apply & save  x stop  s rescan  Esc back  q quit";
 
 pub fn draw(frame: &mut Frame, area: Rect, app: &App) {
-    let hints = if app.view == View::Scan { SCAN_KEYS } else { KEYS };
+    let hints = if app.view == View::Scan {
+        SCAN_KEYS
+    } else {
+        KEYS
+    };
     let line = match &app.status {
         Some(s) => {
             let style = match s.level {

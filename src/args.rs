@@ -60,5 +60,9 @@ pub fn parse() -> Result<Option<Options>> {
             other => bail!("unknown argument: {other}\n\n{HELP}"),
         }
     }
-    Ok(Some(Options { config_dir, multi, auto_rescan }))
+    Ok(Some(Options {
+        config_dir,
+        multi,
+        auto_rescan,
+    }))
 }

@@ -3,16 +3,16 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 
 use crate::args::Options;
 use crate::awg::{Awg, InterfaceInfo};
 use crate::jobs::{self, trace::Trace, Msg, Probe};
-use crate::{config, killswitch, kmod};
 use crate::setup::{self, Distro};
+use crate::{config, killswitch, kmod};
 
 const SCAN_COUNT: usize = 24;
 const HISTORY: usize = 90;
@@ -171,18 +171,24 @@ impl App {
     }
 
     pub fn set_info(&mut self, text: impl Into<String>) {
-        self.status = Some(Status { text: text.into(), level: Level::Info });
+        self.status = Some(Status {
+            text: text.into(),
+            level: Level::Info,
+        });
     }
 
     pub fn set_error(&mut self, text: impl Into<String>) {
-        self.status = Some(Status { text: text.into(), level: Level::Error });
+        self.status = Some(Status {
+            text: text.into(),
+            level: Level::Error,
+        });
     }
 
     // ----------------------------------------------------------------
     /// 'g': only selected tunnel and its endpoint may send traffic
     pub fn toggle_killswitch(&mut self) {
         let Some(live) = self.selected_tunnel().and_then(|t| t.live.clone()) else {
-            return self.set_error("bring the tunnel up first");    
+            return self.set_error("bring the tunnel up first");
         };
 
         let was_on = self.killswitch.is_some();
@@ -197,7 +203,10 @@ impl App {
         };
         match killswitch::enable(&self.awg, &live.name, &ep) {
             Ok(()) => {
-                self.set_info(format!("kill switch on: only {} may send traffic", live.name));
+                self.set_info(format!(
+                    "kill switch on: only {} may send traffic",
+                    live.name
+                ));
                 self.killswitch = Some(live.name);
             }
             Err(e) => self.set_error(format!("{e:#}")),
@@ -228,7 +237,9 @@ impl App {
 
     /// Run installer then load module
     pub fn install_confirmed(&mut self) {
-        let Some(steps) = setup::plan(self.distro) else { return };
+        let Some(steps) = setup::plan(self.distro) else {
+            return;
+        };
         self.install_log.clear();
         match setup::run(&self.awg, &steps, &mut self.install_log) {
             Ok(()) => match kmod::load(&self.awg) {
@@ -254,7 +265,11 @@ impl App {
                 for c in list {
                     map.insert(
                         c.name.clone(),
-                        Tunnel { name: c.name, path: Some(c.path), live: None },
+                        Tunnel {
+                            name: c.name,
+                            path: Some(c.path),
+                            live: None,
+                        },
                     );
                 }
             }
@@ -283,7 +298,11 @@ impl App {
         }
 
         // drop rate history of interfaces that disappeared
-        let live: Vec<&String> = map.values().filter(|t| t.is_up()).map(|t| &t.name).collect();
+        let live: Vec<&String> = map
+            .values()
+            .filter(|t| t.is_up())
+            .map(|t| &t.name)
+            .collect();
         self.prev.retain(|k, _| live.contains(&k));
         self.rates.retain(|k, _| live.contains(&k));
         self.history.retain(|k, _| live.contains(&k));
@@ -314,7 +333,9 @@ impl App {
         let Some(idx) = stale else { return };
         let name = self.tunnels[idx].name.clone();
         if !self.opts.auto_rescan {
-            self.set_error(format!("{name}: no recent handshake - press s to rescan endpoints"));
+            self.set_error(format!(
+                "{name}: no recent handshake - press s to rescan endpoints"
+            ));
             return;
         }
         if self.last_auto.is_some_and(|t| t.elapsed() < AUTO_COOLDOWN) {
@@ -322,7 +343,9 @@ impl App {
         }
         self.last_auto = Some(std::time::Instant::now());
         self.selected = idx;
-        self.set_error(format!("{name}: no recent handshake — rescanning endpoints"));
+        self.set_error(format!(
+            "{name}: no recent handshake — rescanning endpoints"
+        ));
         self.begin_scan(true);
     }
 
@@ -340,13 +363,20 @@ impl App {
         }
 
         // check file on disk at most every 5 sec
-        let Some(p) = self.config_for.clone() else { return };
-        if self.last_mtime_check.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(5)) {
+        let Some(p) = self.config_for.clone() else {
+            return;
+        };
+        if self
+            .last_mtime_check
+            .is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(5))
+        {
             return;
         }
 
         self.last_mtime_check = Some(std::time::Instant::now());
-        let Ok(mtime) = self.awg.file_mtime(&p) else { return };
+        let Ok(mtime) = self.awg.file_mtime(&p) else {
+            return;
+        };
         if self.config_mtime != Some(mtime) {
             self.load_config_text();
             self.config_mtime = Some(mtime);
@@ -425,7 +455,9 @@ impl App {
             return self.set_error(format!("{e:#}"));
         }
 
-        let Some(t) = self.selected_tunnel() else { return };
+        let Some(t) = self.selected_tunnel() else {
+            return;
+        };
         let (name, live, path) = (t.name.clone(), t.is_up(), t.path.clone());
 
         let result: Result<String> = match (live, path) {
@@ -487,7 +519,7 @@ impl App {
         let Some(stem) = src.file_stem().map(|s| s.to_string_lossy().into_owned()) else {
             return self.set_error("empty path");
         };
-        if src.extension().map_or(true, |e| e != "conf") || !src.is_file() {
+        if src.extension().is_none_or(|e| e != "conf") || !src.is_file() {
             return self.set_error(format!("{}: not a .conf file", src.display()));
         }
         if !config::valid_iface_name(&stem) {
@@ -584,7 +616,7 @@ impl App {
         if self.killswitch.is_some() {
             return self.set_error("killswitch blocks scanning - press g to turn it off first");
         }
-            
+
         let info = self.selected_tunnel().and_then(|t| t.live.clone());
         let Some(info) = info else {
             return self.set_error("bring the tunnel up first (Enter)");
@@ -646,7 +678,9 @@ impl App {
         if !done {
             return self.set_error("scan is still running (x to stop it first)");
         }
-        let Some((endpoint, iface, peer)) = choice else { return };
+        let Some((endpoint, iface, peer)) = choice else {
+            return;
+        };
 
         if let Err(e) = self.awg.set_endpoint(&iface, &peer, &endpoint) {
             return self.set_error(format!("{e:#}"));
@@ -667,9 +701,13 @@ impl App {
             self.awg.write_file(&p, &new)
         });
         match saved {
-            Some(Ok(())) => self.set_info(format!("endpoint {endpoint} applied and saved to config")),
+            Some(Ok(())) => {
+                self.set_info(format!("endpoint {endpoint} applied and saved to config"))
+            }
             Some(Err(e)) => self.set_error(format!("applied {endpoint}, but saving failed: {e:#}")),
-            None => self.set_info(format!("endpoint {endpoint} applied (no config file to save)")),
+            None => self.set_info(format!(
+                "endpoint {endpoint} applied (no config file to save)"
+            )),
         }
         if self.killswitch.as_deref() == Some(iface.as_str()) {
             if let Err(e) = killswitch::enable(&self.awg, &iface, &endpoint) {
