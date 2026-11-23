@@ -15,7 +15,6 @@ running as a **kernel module**. It talks to the module through `awg` / `awg-quic
 | `i` / `d` | import a `.conf` / delete the selected one |
 | `Tab` | Status → Config (keys masked) → Kernel log |
 | `m` | `modprobe amneziawg` |
-| `r` | refresh |
 | `q` / `Esc` | quit |
 | `b` | roll back the selected config to its `.conf.bak` (restarts the tunnel if up) |
 | `g` | kill switch: drop all traffic except the selected tunnel and its endpoint (toggle, need nftables) |

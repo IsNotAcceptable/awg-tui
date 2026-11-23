@@ -41,7 +41,6 @@ fn normal(app: &mut App, key: KeyEvent) {
         KeyCode::Up | KeyCode::Char('k') => app.prev(),
         KeyCode::Enter | KeyCode::Char(' ') => app.toggle(),
         KeyCode::Tab => app.cycle_view(),
-        KeyCode::Char('r') => app.manual_refresh(),
         KeyCode::Char('m') => app.load_module(),
         KeyCode::Char('s') => app.start_scan(),
         KeyCode::Char('t') => app.check_trace(),
