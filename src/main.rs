@@ -9,6 +9,7 @@ mod jobs;
 mod kmod;
 mod ui;
 mod killswitch;
+mod setup;
 
 use std::time::{Duration, Instant};
 
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
 
     let mut app = App::new(opts);
     app.refresh();
+    app.check_install();
 
     let mut terminal = ratatui::init();
     let result = run(&mut terminal, &mut app);

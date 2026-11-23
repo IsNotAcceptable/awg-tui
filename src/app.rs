@@ -12,6 +12,7 @@ use crate::args::Options;
 use crate::awg::{Awg, InterfaceInfo};
 use crate::jobs::{self, trace::Trace, Msg, Probe};
 use crate::{config, killswitch, kmod};
+use crate::setup::{self, Distro};
 
 const SCAN_COUNT: usize = 24;
 const HISTORY: usize = 90;
@@ -33,6 +34,8 @@ pub enum Mode {
     ConfirmDelete(String),
     /// Waiting for y/n to restore the named tunnel from its .conf.bak.
     ConfirmRollback(String),
+    /// Waiting for y/n to install kernel module and tools
+    ConfirmInstall,
 }
 
 pub enum TraceState {
@@ -109,11 +112,15 @@ pub struct App {
     pub status: Option<Status>,
     pub config_text: String,
     config_for: Option<PathBuf>,
+    config_mtime: Option<u64>,
+    last_mtime_check: Option<std::time::Instant>,
     pub log_text: String,
     pub trace: TraceState,
     pub scan: Option<ScanState>,
     /// Interface whose killswitch is cur active
     pub killswitch: Option<String>,
+    pub distro: Distro,
+    pub install_log: Vec<String>,
     pub should_quit: bool,
     /// Set by the key handler; the main loop suspends the TUI and opens the editor.
     pub pending_edit: Option<PathBuf>,
@@ -140,10 +147,14 @@ impl App {
             status: None,
             config_text: String::new(),
             config_for: None,
+            config_mtime: None,
+            last_mtime_check: None,
             log_text: String::new(),
             trace: TraceState::Idle,
             scan: None,
             killswitch: None,
+            distro: setup::detect(),
+            install_log: Vec::new(),
             should_quit: false,
             pending_edit: None,
             rates: HashMap::new(),
@@ -200,6 +211,34 @@ impl App {
             self.killswitch = None;
         }
         Ok(())
+    }
+
+    // ----------------------------------------------------------------
+    /// Offers to install when its missing
+    pub fn check_install(&mut self) {
+        if self.kmod_loaded || self.distro == Distro::Nixos {
+            return;
+        }
+        if setup::plan(self.distro).is_some() {
+            self.mode = Mode::ConfirmInstall;
+        } else {
+            self.set_error(setup::manual_hint(self.distro));
+        }
+    }
+
+    /// Run installer then load module
+    pub fn install_confirmed(&mut self) {
+        let Some(steps) = setup::plan(self.distro) else { return };
+        self.install_log.clear();
+        match setup::run(&self.awg, &steps, &mut self.install_log) {
+            Ok(()) => match kmod::load(&self.awg) {
+                Ok(()) => self.set_info("amneziawg module installed and loaded"),
+                Err(e) => self.set_error(format!("installed, but modprobe failed: {e:#}")),
+            },
+            Err(e) => self.set_error(format!("install failed: {e:#}")),
+        }
+        self.view = View::Log;
+        self.refresh();
     }
 
     // ---------------------------------------------------------------- refresh
@@ -293,19 +332,24 @@ impl App {
 
     fn sync_config(&mut self) {
         let path = self.selected_tunnel().and_then(|t| t.path.clone());
-        if path == self.config_for {
+        if path != self.config_for {
+            self.config_for = path;
+            self.config_mtime = None;
+            self.load_config_text();
             return;
         }
-        self.config_for = path;
-        self.load_config_text();
-    }
 
-    /// `r`: refresh plus reload the kernel log.
-    pub fn manual_refresh(&mut self) {
-        self.invalidate_config();
-        self.refresh();
-        if self.view == View::Log {
-            self.load_log();
+        // check file on disk at most every 5 sec
+        let Some(p) = self.config_for.clone() else { return };
+        if self.last_mtime_check.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(5)) {
+            return;
+        }
+
+        self.last_mtime_check = Some(std::time::Instant::now());
+        let Ok(mtime) = self.awg.file_mtime(&p) else { return };
+        if self.config_mtime != Some(mtime) {
+            self.load_config_text();
+            self.config_mtime = Some(mtime);
         }
     }
 

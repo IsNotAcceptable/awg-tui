@@ -31,6 +31,14 @@ pub fn draw(frame: &mut Frame, app: &App) {
                 Line::from(Span::styled("y yes · any other key cancel", theme::label())),
             ],
         ),
+        Mode::ConfirmInstall => (
+            " Install ",
+            vec![
+                Line::from("AmneziaWG kernel module is missing. Install it now?"),
+                Line::from("Runs package installs and DKMS build with sudo."),
+                Line::from(Span::styled("y yes · any other key cancel", theme::label())),
+            ],
+        ),
     };
 
     let area = centered(frame.area(), 70, lines.len() as u16 + 2);

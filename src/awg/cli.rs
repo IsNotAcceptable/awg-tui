@@ -70,6 +70,12 @@ impl Awg {
         self.run("modprobe", &[module]).map(drop)
     }
 
+    /// Mod time of a file as unix sec
+    pub fn file_mtime(&self, path: &Path) -> Result<u64> {
+        let out = self.run("stat", &["-c", "%Y", &path.to_string_lossy()])?;
+        out.trim().parse().map_err(|_| anyhow::anyhow!("bad mtime for {}", path.display()))
+    }
+
     /// Reads a (usually root-only) file.
     pub fn read_file(&self, path: &Path) -> Result<String> {
         if self.sudo {
@@ -129,6 +135,10 @@ impl Awg {
     fn run(&self, bin: &str, args: &[&str]) -> Result<String> {
         let out = check(self.exec(bin, args, None, true)?)?;
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    }
+
+    pub fn sudo_run(&self, bin: &str, args: &[&str]) -> Result<String> {
+        self.run(bin, args)
     }
 
     fn exec(&self, bin: &str, args: &[&str], stdin: Option<&str>, escalate: bool) -> Result<Output> {
