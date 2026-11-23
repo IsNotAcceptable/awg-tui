@@ -3,7 +3,8 @@
 Terminal UI for [AmneziaWG](https://github.com/amnezia-vpn/amneziawg-linux-kernel-module)
 running as a **kernel module**. It talks to the module through `awg` / `awg-quick`.
 
-## Keys
+## Usage 
+### Keys
 
 | Key | Action |
 |---|---|
@@ -21,19 +22,23 @@ running as a **kernel module**. It talks to the module through `awg` / `awg-quic
 
 Run it as `sudo awg-tui`, or as a user with passwordless `sudo -n` for the tools.
 
+### Command-line options
+
+- `-m`, `--multi`: do not bring other tunnels down when starting one
+- `-a`, `--auto-rescan`: rescan endpoints automatically when a handshake goes stale
+
 ## Installation
 awg-tui needs three things on the system: the AmneziaWG kernel module, the awg and awg-quick tools, and a few helper programs. The program checks for them at startup and can offer to install the module, but automatic installation is only planned for Debian. Everything else is manual.
 
-## Manual installation 
-awg-tui calls these through `PATH`:
-| Program | Package | Used for |
-| ------- | ------- | -------- |
-| modprobe | kmod | loading kernel module |
-| nft | nftables | kill switch |
-| curl | curl | public ip check |
-| ping | iputils | latency |
-| journalctl | systemd | kernel log |
+## Requirements
 
+- Linux with root access (via `sudo`)
+- AmneziaWG kernel module (`amneziawg`)
+- AmneziaWG tools `awg` and `awg-quick`
+- Helper programs: `kmod`, `nftables`, `curl`, `iputils`
+- Rust toolchain to build
+
+## Manual installation 
 Tools for awg:
 ```bash
 git clone https://github.com/amnezia-vpn/amneziawg-tools
@@ -41,7 +46,7 @@ cd amneziawg-tools/src
 make
 sudo make install
 ```
-Dependencies: a C compiler and libc. Check with which awg awg-quick.
+Dependencies: a C compiler and libc. Check with `which awg awg-quick`.
 
 kernel module from [amneziawg-linux-kernel-module](https://github.com/amnezia-vpn/amneziawg-linux-kernel-module), or from your distribution's packages (see the sections below). Install kernel headers for the running kernel first, since the module is built against them. Check with:
 ```bash
@@ -60,7 +65,9 @@ sudo ./target/release/awg-tui
 
 Tunnel configs live in /etc/amnezia/amneziawg/.
 
-## Debian-based
+If the module is missing at startup, awg-tui offers to install it. See the Debian section for what that step does.
+
+### Debian-based
 
 ```bash
 # Install packages
@@ -79,8 +86,29 @@ sudo apt update
 sudo apt install -y amneziawg
 ```
 
+After follow manual with installation tools
 
-## NixOS
+The module must match the running kernel. Build it with DKMS from the upstream [amneziawg-linux-kernel-module](https://github.com/amnezia-vpn/amneziawg-linux-kernel-module) repository, then verify with `sudo modinfo amneziawg`. Automatic module build is not implemented yet, so the install step in awg-tui only installs the dependencies above.
+
+If Secure Boot is on, the DKMS module must be signed with a key the system trusts, or `modprobe` will refuse to load it.
+
+If your tunnel config has a `DNS` line, `awg-quick` runs `resolvconf` to apply it. On Debian 13 it is not installed by default, and without it `awg-quick up` rolls the interface back. Either install a resolver integration:
+
+```bash
+sudo apt install -y resolvconf    # or openresolv
+```
+
+or remove the `DNS` line from the config.
+
+### Fedora / RHEL
+
+Not yet verified. Build the module from source with `kernel-devel` for the running kernel.
+
+### Arch Linux
+
+Not yet verified. The AUR has `amneziawg-dkms` and `amneziawg-tools`; install them with an AUR helper.
+
+### NixOS
 
 ```nix
 # flake.nix
@@ -103,19 +131,10 @@ Options: `programs.awg-tui.{enable,package,toolsPackage,configDir,kernelModule.e
 
 Try without installing: `sudo nix run github:isnotacceptable/awg-tui`.
 
-## Layout
+## Troubleshooting
 
-```
-src/main.rs        entrypoint, main loop
-src/args.rs        CLI args
-src/app.rs         state and actions
-src/event.rs       keyboard input
-src/kmod.rs        kernel module status / modprobe
-src/config.rs      *.conf scanning, secret masking
-src/fmt.rs         formatting helpers
-src/awg/           awg / awg-quick wrapper, `dump` parser, models
-src/jobs/          background jobs: endpoint scan, exit check
-src/editor.rs      suspend TUI and run $EDITOR
-src/ui/            ratatui widgets (header, tunnels, details, footer, theme)
-nix/               package.nix, module.nix
-```
+- **`failed to execute awg`** - the tools are not installed or not in `PATH`. See manual with tools.
+- **`modprobe: Module amneziawg not found`** - the module is not built for the running kernel. See manual with mod kernel.
+- **`cannot start editor`** - `$EDITOR` is unset or points to a program that `sudo` cannot find. Run with `sudo -E` or pass the full path, for example `sudo EDITOR="$(which nvim)" ./target/release/awg-tui`.
+- **`awg-quick up` rolls back after `resolvconf: command not found`** - see the DNS note in the Debian section.
+- **Kill switch cut off your SSH session** - turn it off from a local console, or run it only when traffic goes through the tunnel. If awg-tui exits while the kill switch is on, remove the rule manually with `sudo nft delete table inet awg_tui_ks`.
